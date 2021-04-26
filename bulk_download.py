@@ -1,5 +1,15 @@
 #!/usr/bin/env python3
 
+import argparse
+def get_parser():
+    parser = argparse.ArgumentParser(description="Download free music from audionautix.com, and skip the files that exist already.",
+            formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    parser.add_argument("download_path", default='downloaded', help="Directory to download.")
+    return parser
+
+parser = get_parser()
+args = parser.parse_args()
+
 import requests
 import re
 from bs4 import BeautifulSoup
@@ -17,8 +27,6 @@ def get_filename_from_cd(cd):
         return None
     return fname[0][1:-1]
 
-DOWNLOAD_PATH = 'downloaded'
-
 if __name__ == '__main__':
     # crawling genres
     search_url = 'https://audionautix.com'
@@ -35,7 +43,7 @@ if __name__ == '__main__':
         genre_name = genre.text.strip().replace('/', '_')
         genre_link = genre.find('a').attrs['href']
 
-        genre_dir = os.path.join(DOWNLOAD_PATH,genre_name)
+        genre_dir = os.path.join(args.download_path,genre_name)
         os.makedirs(genre_dir, exist_ok=True)
         
         search = requests.get(search_url + genre_link)
@@ -49,10 +57,13 @@ if __name__ == '__main__':
 
 
     for genre_dir, download_URL in tqdm.tqdm(zip(genre_dirs, download_URLs)):
-        r = requests.get(download_URL)
         filename = download_URL[download_URL.find('/Music/')+7:]
         download_path = os.path.join(genre_dir, filename)
-        tqdm.tqdm.write(download_path)
-        with open(download_path, 'wb') as f:
-            f.write(r.content)
+        if os.path.isfile(download_path):
+            tqdm.tqdm.write(f"File exists. Skipping: {download_path}")
+        else:
+            tqdm.tqdm.write(f"Downloading to: {download_path}")
+            r = requests.get(download_URL)
+            with open(download_path, 'wb') as f:
+                f.write(r.content)
 
